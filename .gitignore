@@ -1,0 +1,34 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Playwright test outputs
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+
+# Authentication & credentials
+.auth/
+.env
+.env.*
+!.env.example
+
+# Build & logs
+dist/
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# OS & Editor
+.DS_Store
+Thumbs.db
+.idea/
+
+# Local / unrelated files & folders
+local/
+.local/
+*.local
+interview-prep/
+battery-app

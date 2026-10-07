@@ -1,0 +1,33 @@
+{
+  "name": "battery-esp-e2e",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "playwright test",
+    "test:ui": "playwright test tests/ui",
+    "test:api": "playwright test tests/api",
+    "test:mock": "playwright test tests/mock",
+    "test:bva": "playwright test tests/bva",
+    "test:smoke": "playwright test --grep @smoke",
+    "test:headed": "playwright test --headed",
+    "test:report": "playwright show-report",
+    "test:api:newman": "npx -y newman run postman/battery-esp-api.postman_collection.json -e postman/battery-esp-local.postman_environment.json",
+    "typecheck": "tsc --noEmit"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/parsany/battery-esp-e2e.git"
+  },
+  "keywords": [],
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/parsany/battery-esp-e2e/issues"
+  },
+  "homepage": "https://github.com/parsany/battery-esp-e2e#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "@types/node": "^22.20.3",
+    "typescript": "^7.0.2"
+  }
+}

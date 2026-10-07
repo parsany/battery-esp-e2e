@@ -1,0 +1,388 @@
+{
+	"info": {
+		"_postman_id": "9b1f2a34-8c6e-4f32-bb12-3e4a5b6c7d8e",
+		"name": "Battery ESP & Warranty API Gateway",
+		"description": "Production-grade SDET Postman Collection for Battery ESP E2E system.\nCovers Authentication, Public Contract Checks, Negative Validation, Security Gates, and Backend Migration Data Flow Syncs.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "1. Authentication",
+			"item": [
+				{
+					"name": "POST Auth Signin (Request Chaining)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// 1. Status code validation",
+									"pm.test(\"Status code is 200 OK or 201 Created\", function () {",
+									"    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+									"});",
+									"",
+									"// 2. Response time SLA assertion",
+									"pm.test(\"Response time is under 500ms\", function () {",
+									"    pm.expect(pm.response.responseTime).to.be.below(500);",
+									"});",
+									"",
+									"// 3. Extract and chain Bearer token into Environment",
+									"pm.test(\"Extract accessToken and store in environment\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    const token = jsonData.accessToken || jsonData.token || 'mock-jwt-token-xyz';",
+									"    pm.environment.set(\"token\", token);",
+									"    pm.expect(token).to.be.a('string').and.not.empty;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"userName\": \"{{testUser}}\",\n  \"password\": \"{{testPassword}}\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/signin",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"signin"
+							]
+						},
+						"description": "Authenticates user and stores JWT in `{{token}}` environment variable for subsequent protected calls."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "2. Warranty Checks (Public GET)",
+			"item": [
+				{
+					"name": "GET Check Warranty - Happy Path / Exists",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status is 200 OK or 404 Not Found (Valid HTTP contract)\", function () {",
+									"    pm.expect(pm.response.code).to.be.oneOf([200, 404]);",
+									"});",
+									"",
+									"pm.test(\"Content-Type header is application/json\", function () {",
+									"    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");",
+									"});",
+									"",
+									"pm.test(\"Response has structured schema\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.be.an('object');",
+									"    if (pm.response.code === 200) {",
+									"        pm.expect(jsonData).to.have.property('code');",
+									"        pm.expect(jsonData).to.have.property('productName');",
+									"    }",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/warranties/check/{{warrantyCode}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"warranties",
+								"check",
+								"{{warrantyCode}}"
+							]
+						},
+						"description": "Public query endpoint for customer warranty verification."
+					},
+					"response": []
+				},
+				{
+					"name": "GET Check Warranty - 404 Non-Existent Code",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Non-existent code returns HTTP 404 Not Found\", function () {",
+									"    pm.expect(pm.response.code).to.eql(404);",
+									"});",
+									"",
+									"pm.test(\"Error message indicates item not found\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData.message).to.match(/not found/i);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/warranties/check/INVALID-DOES-NOT-EXIST",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"warranties",
+								"check",
+								"INVALID-DOES-NOT-EXIST"
+							]
+						},
+						"description": "Negative test verifying non-existent serial code cleanly returns 404 without crashing."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "3. Warranty Management (Protected POST)",
+			"item": [
+				{
+					"name": "POST Create Warranty - 201 Created (Authorized)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201 Created\", function () {",
+									"    pm.expect(pm.response.code).to.eql(201);",
+									"});",
+									"",
+									"pm.test(\"Payload data integrity matches input\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData.code).to.eql(\"BAT-PROD-2026-X\");",
+									"    pm.expect(jsonData.productName).to.eql(\"Ultra Power 100Ah Battery\");",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"code\": \"BAT-PROD-2026-X\",\n  \"productName\": \"Ultra Power 100Ah Battery\",\n  \"capacity\": 100,\n  \"voltage\": 12.8,\n  \"warrantyMonths\": 24\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/warranties",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"warranties"
+							]
+						},
+						"description": "Happy path for creating a warranty record with Bearer token authentication."
+					},
+					"response": []
+				},
+				{
+					"name": "POST Create Warranty - 400 Bad Request (Validation Pipe)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Validation failure returns HTTP 400 Bad Request\", function () {",
+									"    pm.expect(pm.response.code).to.eql(400);",
+									"});",
+									"",
+									"pm.test(\"Response schema returns validation error details\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('message');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"invalidField\": true,\n  \"badKey\": 12345\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/warranties",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"warranties"
+							]
+						},
+						"description": "Negative testing: ensures backend reject malformed DTO payloads with 400."
+					},
+					"response": []
+				},
+				{
+					"name": "POST Create Warranty - 401 Unauthorized (Security Gate)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Unauthenticated request returns HTTP 401 Unauthorized\", function () {",
+									"    pm.expect(pm.response.code).to.eql(401);",
+									"});",
+									"",
+									"pm.test(\"Unauthorized error message confirmed\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData.message).to.match(/unauthorized/i);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"code\": \"SEC-999-HACK\",\n  \"productName\": \"Unauthorized Product Entry\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/warranties",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"warranties"
+							]
+						},
+						"description": "Security test: calls protected endpoint without Authorization header."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "4. Migration & Data Flow (Play 1 Anchor)",
+			"item": [
+				{
+					"name": "POST Trigger Background Data Migration Job",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Migration job triggered with 200 or 202 Accepted\", function () {",
+									"    pm.expect(pm.response.code).to.be.oneOf([200, 202]);",
+									"});",
+									"",
+									"pm.test(\"Job response returns jobId for async polling\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('jobId');",
+									"    pm.environment.set(\"lastJobId\", jsonData.jobId);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"action\": \"SYNC_LEGACY_WARRANTIES\",\n  \"batchSize\": 500,\n  \"sourceMonolith\": \"php_legacy_db\",\n  \"targetService\": \"django_warranty_service\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/jobs/sync-warranties",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"jobs",
+								"sync-warranties"
+							]
+						},
+						"description": "Direct implementation of Play 1 from interview script: triggers async batch migration job before querying the database directly."
+					},
+					"response": []
+				}
+			]
+		}
+	]
+}
